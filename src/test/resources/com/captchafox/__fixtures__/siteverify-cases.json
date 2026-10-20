@@ -1,0 +1,138 @@
+{
+  "endpoint": "https://api.captchafox.com/siteverify",
+  "cases": [
+    {
+      "name": "a passed verification with challenge time and hostname",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":true,\"challenge_ts\":\"2026-10-20T10:00:00Z\",\"hostname\":\"example.com\"}" },
+      "expect": { "outcome": "passed", "challengeTs": "2026-10-20T10:00:00Z", "hostname": "example.com" }
+    },
+    {
+      "name": "a passed verification with success only",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":true}" },
+      "expect": { "outcome": "passed" }
+    },
+    {
+      "name": "sitekey and remoteIp are sent when given",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000", "sitekey": "sk_11111111000000001111111100000000", "remoteIp": "203.0.113.7" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000", "sitekey": "sk_11111111000000001111111100000000", "remoteIp": "203.0.113.7" },
+      "answer": { "status": 200, "body": "{\"success\":true}" },
+      "expect": { "outcome": "passed" }
+    },
+    {
+      "name": "an empty sitekey and remoteIp are not sent",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000", "sitekey": "", "remoteIp": "" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":true}" },
+      "expect": { "outcome": "passed" }
+    },
+    {
+      "name": "unknown fields are ignored",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":true,\"insights\":{\"score\":0.1}}" },
+      "expect": { "outcome": "passed" }
+    },
+    {
+      "name": "a rejection with an error code",
+      "input": { "secret": "ok_FFFFFFFF00000000FFFFFFFF00000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_FFFFFFFF00000000FFFFFFFF00000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":false,\"error-codes\":[\"timeout-or-duplicate\"]}" },
+      "expect": { "outcome": "rejected", "errorCodes": ["timeout-or-duplicate"] }
+    },
+    {
+      "name": "a rejection with several error codes",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000", "remoteIp": "203.0.113.7" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000", "remoteIp": "203.0.113.7" },
+      "answer": { "status": 200, "body": "{\"success\":false,\"error-codes\":[\"invalid-input-response\",\"invalid-ip-match\"]}" },
+      "expect": { "outcome": "rejected", "errorCodes": ["invalid-input-response", "invalid-ip-match"] }
+    },
+    {
+      "name": "error codes that are no strings are left out",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":false,\"error-codes\":[\"timeout-or-duplicate\",7,null]}" },
+      "expect": { "outcome": "rejected", "errorCodes": ["timeout-or-duplicate"] }
+    },
+    {
+      "name": "a rejection without error codes",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":false}" },
+      "expect": { "outcome": "rejected", "errorCodes": [] }
+    },
+    {
+      "name": "an empty token is rejected without a request",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "" },
+      "request": null,
+      "answer": null,
+      "expect": { "outcome": "rejected", "errorCodes": ["missing-input-response"] }
+    },
+    {
+      "name": "a status other than 200 cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 500, "body": "" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a status other than 200 cannot be evaluated, whatever its body",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 429, "body": "{\"success\":true}" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a body that is no JSON cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "<html>Bad Gateway</html>" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a JSON body that is no object cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "[true]" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a body without success cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"hostname\":\"example.com\"}" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a success that is no boolean cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "status": 200, "body": "{\"success\":\"true\"}" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a timeout cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "error": "timeout" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a body that stops after the headers cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "answer": { "error": "stall", "status": 200, "body": "{\"success\":" },
+      "expect": { "outcome": "unavailable" }
+    },
+    {
+      "name": "a refused connection cannot be evaluated",
+      "input": { "secret": "ok_11111111000000001111111100000000", "response": "11111111000000001111111100000000" },
+      "request": null,
+      "answer": { "error": "connection" },
+      "expect": { "outcome": "unavailable" }
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+name: Release
+
+# Runs when a version tag is pushed: publishes the version to Maven Central, then creates the GitHub release. Tags on a
+# commit that is not on main, or whose version or changelog does not match, are refused before anything is published.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+concurrency: release
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-24.04
+    permissions:
+      # Creates the GitHub release.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, so that the check below can see whether the tag is on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check that the tag points to a commit on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::${GITHUB_REF_NAME} points to $(git rev-parse --short HEAD), which is not on main. Tag the tested commit on main."
+            exit 1
+          fi
+
+      # Without a cache, so that nothing from another run enters the published artifacts.
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+
+      - name: Check the version in pom.xml and the changelog
+        run: .github/scripts/check-release.sh "$GITHUB_REF_NAME" "$RUNNER_TEMP/notes.md"
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      - name: Sign and publish to Maven Central
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_KEY: ${{ secrets.MAVEN_GPG_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: ./mvnw -B -Prelease deploy -DskipTests
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "target/captchafox-java-${version}.jar" \
+            "target/captchafox-java-${version}-sources.jar" \
+            "target/captchafox-java-${version}-javadoc.jar" \
+            --verify-tag \
+            --title "CaptchaFox for Java ${version}" \
+            --notes-file "$RUNNER_TEMP/notes.md"
