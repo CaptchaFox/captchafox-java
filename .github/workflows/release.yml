@@ -60,10 +60,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#v}"
+          zip -j "target/captchafox-java-${version}.zip" \
+            "target/captchafox-java-${version}.jar" \
+            "target/captchafox-java-${version}-sources.jar" \
+            "target/captchafox-java-${version}-javadoc.jar" \
+            LICENSE README.md
           gh release create "$GITHUB_REF_NAME" \
             "target/captchafox-java-${version}.jar" \
             "target/captchafox-java-${version}-sources.jar" \
             "target/captchafox-java-${version}-javadoc.jar" \
+            "target/captchafox-java-${version}.zip" \
             --verify-tag \
             --title "CaptchaFox for Java ${version}" \
             --notes-file "$RUNNER_TEMP/notes.md"
